@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连连看消除小游戏 (可直接预览)</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+        }
+
+        #game-container {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #game-board {
+            display: grid;
+            /* 样式由 JS 设置 grid-template-columns */
+            gap: 5px;
+            margin: 20px auto;
+            border: 4px solid #ccddee;
+            padding: 5px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+        }
+
+        .card {
+            width: 60px;
+            height: 60px;
+            background-color: #3498db;
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.15s ease-in-out;
+            user-select: none;
+            will-change: transform; /* 提升动画性能 */
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            background-color: #2980b9;
+        }
+
+        /* 选中状态 */
+        .card.selected {
+            border: 4px solid #f39c12;
+            box-shadow: 0 0 15px rgba(243, 156, 18, 0.8);
+            transform: scale(0.95);
+        }
+
+        /* 已消除状态 */
+        .card.matched {
+            background-color: transparent !important;
+            box-shadow: none;
+            visibility: hidden; /* 让卡片消失，但保留其网格位置 */
+            pointer-events: none;
+        }
+
+        #start-button {
+            padding: 12px 25px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+
+        #start-button:hover {
+            background-color: #27ae60;
+        }
+
+        #status-message {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #c0392b;
+            min-height: 20px; /* 保持空间稳定 */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>🎮 连连看小游戏</h1>
+        <div id="game-board">
+            </div>
+        <div id="status-message">点击“开始新游戏”按钮开始！</div>
+        <button id="start-button">开始新游戏</button>
+        <p style="font-size: 12px; color: #777;">提示：此版本仅支持**相邻卡片**的消除，不包含复杂的三折线路径判断。</p>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 6; // 6x6 的游戏板
+        const CARD_TYPES = ['🍎', '🍌', '🍓', '🐸', '🌟', '💎', '🎯', '🚀', '🎁', '🎈', '☀️', '☔']; // 卡片种类
+        let gameBoard = []; // 存储卡片值和状态的二维数组
+        let selectedCard = null; // 存储当前选中的第一张卡片
+        let remainingPairs = 0;
+
+        const boardElement = document.getElementById('game-board');
+        const statusElement = document.getElementById('status-message');
+        const startButton = document.getElementById('start-button');
+
+        // --- 游戏初始化和重置 ---
+
+        function initializeGame() {
+            // 1. 生成卡片数组
+            let cardValues = [];
+            const totalCells = BOARD_SIZE * BOARD_SIZE;
+            const numPairs = totalCells / 2;
+
+            // 确保卡片总数是偶数
+            if (totalCells % 2 !== 0) {
+                 statusElement.textContent = "错误: 游戏板大小必须是偶数。";
+                 return;
+            }
+
+            // 根据需要的对数生成卡片值
+            for (let i = 0; i < numPairs; i++) {
+                const cardType = CARD_TYPES[i % CARD_TYPES.length];
+                cardValues.push(cardType, cardType); // 每种卡片放两张
+            }
+
+            // 2. 打乱卡片顺序 (Fisher-Yates 洗牌算法)
+            for (let i = cardValues.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardValues[i], cardValues[j]] = [cardValues[j], cardValues[i]];
+            }
+
+            // 3. 构建二维游戏板数组
+            gameBoard = [];
+            let k = 0;
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                gameBoard[r] = [];
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    gameBoard[r][c] = {
+                        value: cardValues[k++],
+                        matched: false
+                    };
+                }
+            }
+
+            remainingPairs = numPairs;
+            selectedCard = null;
+            statusElement.textContent = `游戏开始！剩余 ${remainingPairs} 对。`;
+            renderBoard();
+        }
+
+        // --- 渲染游戏板 ---
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            // 设置 CSS 网格布局
+            boardElement.style.gridTemplateColumns = `repeat(${BOARD_SIZE}, 60px)`;
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = gameBoard[r][c];
+                    const cardDiv = document.createElement('div');
+                    cardDiv.classList.add('card');
+                    cardDiv.dataset.row = r;
+                    cardDiv.dataset.col = c;
+                    cardDiv.textContent = cell.value;
+
+                    if (cell.matched) {
+                        cardDiv.classList.add('matched');
+                    }
+
+                    cardDiv.addEventListener('click', handleCardClick);
+                    boardElement.appendChild(cardDiv);
+                }
+            }
+        }
+
+        // --- 核心游戏逻辑 ---
+
+        function handleCardClick(event) {
+            const clickedCardDiv = event.currentTarget;
+            const r = parseInt(clickedCardDiv.dataset.row);
+            const c = parseInt(clickedCardDiv.dataset.col);
+            const cell = gameBoard[r][c];
+
+            // 忽略已匹配的卡片
+            if (cell.matched) return;
+
+            // 1. 选中第一张卡片
+            if (!selectedCard) {
+                selectedCard = { r, c, div: clickedCardDiv };
+                clickedCardDiv.classList.add('selected');
+                statusElement.textContent = "已选中第一张卡片，请选择第二张。";
+            }
+            // 2. 选中第二张卡片 (点击同一张则取消)
+            else if (selectedCard.r === r && selectedCard.c === c) {
+                // 再次点击同一张卡片，取消选中
+                clickedCardDiv.classList.remove('selected');
+                selectedCard = null;
+                statusElement.textContent = `剩余 ${remainingPairs} 对。`;
+            }
+            else {
+                // 尝试匹配
+                const firstCell = gameBoard[selectedCard.r][selectedCard.c];
+
+                // 2a. 判断值是否相同
+                if (firstCell.value === cell.value) {
+
+                    // 2b. 路径判断
+                    if (isSimpleConnect(selectedCard.r, selectedCard.c, r, c)) {
+
+                        // 成功匹配
+                        statusElement.textContent = "✅ 成功消除！";
+
+                        // 标记为已匹配
+                        firstCell.matched = true;
+                        cell.matched = true;
+
+                        // 移除选中样式并添加匹配样式
+                        selectedCard.div.classList.remove('selected');
+                        clickedCardDiv.classList.add('matched');
+                        selectedCard.div.classList.add('matched');
+
+                        remainingPairs--;
+
+                        // 检查游戏是否结束
+                        if (remainingPairs === 0) {
+                            statusElement.textContent = "恭喜！🎉 你赢了！";
+                            startButton.textContent = "再玩一次";
+                        } else {
+                            statusElement.textContent = `剩余 ${remainingPairs} 对。`;
+                        }
+
+                        // 重置选中状态
+                        selectedCard = null;
+
+                    } else {
+                        // 值相同但不能连接
+                        flashMismatch(clickedCardDiv, "⚠️ 值相同，但连接路径不符合规则 (仅支持相邻消除)。");
+                    }
+
+                } else {
+                    // 匹配失败
+                    flashMismatch(clickedCardDiv, "❌ 匹配失败，符号不相同。");
+                }
+            }
+        }
+
+        // 匹配失败时的视觉反馈
+        function flashMismatch(clickedCardDiv, message) {
+            statusElement.textContent = message;
+            clickedCardDiv.classList.add('selected'); // 临时高亮第二张
+            setTimeout(() => {
+                // 确保selectedCard未被新的点击覆盖
+                if (selectedCard && selectedCard.div) {
+                    selectedCard.div.classList.remove('selected');
+                }
+                clickedCardDiv.classList.remove('selected');
+                selectedCard = null;
+                statusElement.textContent = `剩余 ${remainingPairs} 对。`;
+            }, 800);
+        }
+
+        /**
+         * 简化版的连接判断：仅判断两张卡片是否直接相邻（横、竖、对角）
+         */
+        function isSimpleConnect(r1, c1, r2, c2) {
+            // 检查是否在相邻行或相邻列，或者在对角线
+            const isAdjacent = Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1;
+            // 排除同一张卡片
+            const isSameCard = r1 === r2 && c1 === c2;
+
+            return isAdjacent && !isSameCard;
+        }
+
+
+        // --- 事件监听 ---
+
+        startButton.addEventListener('click', initializeGame);
+
+        // 首次加载页面时，显示提示信息
+        window.onload = () => {
+             statusElement.textContent = "点击“开始新游戏”按钮开始游戏！";
+        }
+    </script>
+</body>
+</html>

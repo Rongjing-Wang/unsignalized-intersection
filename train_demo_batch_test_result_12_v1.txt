@@ -1,0 +1,14 @@
+./data/test\arvTimeNewVeh_new_1200_12.mat
+vehicle number 2284  collisions occurred number 630 collisions rate 0.27583187390542907 pT-m 11.7578 s jerks 67.19703727639236 lock_num 2489
+./data/test\arvTimeNewVeh_new_1000_12.mat
+vehicle number 1968  collisions occurred number 443 collisions rate 0.22510162601626016 pT-m 11.7611 s jerks 60.511197741401055 lock_num 2096
+./data/test\arvTimeNewVeh_new_900_12.mat
+vehicle number 1825  collisions occurred number 408 collisions rate 0.22356164383561644 pT-m 11.8081 s jerks 59.76484645100943 lock_num 1545
+./data/test\arvTimeNewVeh_new_800_12.mat
+vehicle number 1553  collisions occurred number 334 collisions rate 0.21506761107533806 pT-m 11.8479 s jerks 56.72487661998205 lock_num 1158
+./data/test\arvTimeNewVeh_new_600_12.mat
+vehicle number 1156  collisions occurred number 200 collisions rate 0.17301038062283736 pT-m 11.7852 s jerks 44.401297814671956 lock_num 667
+./data/test\arvTimeNewVeh_new_400_12.mat
+vehicle number 754  collisions occurred number 92 collisions rate 0.1220159151193634 pT-m 11.8776 s jerks 36.62671085906985 lock_num 132
+./data/test\arvTimeNewVeh_new_200_12.mat
+vehicle number 408  collisions occurred number 18 collisions rate 0.04411764705882353 pT-m 11.9656 s jerks 30.66043550417492 lock_num 214
